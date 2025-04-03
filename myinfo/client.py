@@ -42,8 +42,12 @@ class MyInfoClient(object):
     def get_url(cls, resource: str):
         """
         Returns the URL for resource.
+        For v4, the authorization endpoint still uses v2 path.
         """
-        return f"{settings.MYINFO_DOMAIN}/{cls.context}/{cls.version}/{resource}"
+        if resource == "authorize":
+            return f"{settings.MYINFO_DOMAIN}/serviceauth/myinfo-com/v2/{resource}"
+        else:
+            return f"{settings.MYINFO_DOMAIN}/{cls.context}/{cls.version}/{resource}"
 
     def request(self, api_url, method="GET", extra_headers=None, params=None, data=None):
         """
@@ -114,6 +118,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
         querystring = urlencode(query, safe=",/:", quote_via=quote)
         url = cls.get_url("authorize")
         authorise_url = f"{url}?{querystring}"
+        print(f"DEBUG - Authorization URL: {authorise_url}") 
         return authorise_url
 
     @classmethod
