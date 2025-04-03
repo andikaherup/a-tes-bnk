@@ -85,3 +85,19 @@ class MyInfoPersonSerializer(serializers.Serializer):
         data = super().to_representation(instance)
         # Process nested structures if needed
         return data
+
+
+class MyInfoProfileSerializer(serializers.Serializer):
+    """
+    Serializer for simplified MyInfo profile data.
+    """
+    id = serializers.CharField()
+    name = serializers.CharField()
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
+    mobile = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    address = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    dob = serializers.DateField(required=False, allow_null=True)
+    gender = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    nationality = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    residentialstatus = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    maritalstatus = serializers.CharField(required=False, allow_null=True, allow_blank=True)
