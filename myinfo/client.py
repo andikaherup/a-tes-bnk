@@ -28,8 +28,8 @@ class MyInfoClient(object):
 
     API_TIMEOUT = 30
     # MyInfo fields
-    context = ""
-    version = ""
+    context = "com"
+    version = "v4"
     client_id = ""
 
     def __init__(self, name=None):
@@ -42,11 +42,7 @@ class MyInfoClient(object):
     def get_url(cls, resource: str):
         """
         Returns the URL for resource.
-        Refer to URL structure at
-        https://public.cloud.myinfo.gov.sg/myinfobiz/myinfo-biz-specs-v2.0.1.html#section/Environments
         """
-
-        #  https://public.cloud.myinfo.gov.sg/myinfobiz/myinfo-biz-specs-v2.0.1.html#section/Environments
         return f"{settings.MYINFO_DOMAIN}/{cls.context}/{cls.version}/{resource}"
 
     def request(self, api_url, method="GET", extra_headers=None, params=None, data=None):
@@ -119,7 +115,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
         url = cls.get_url("authorize")
         authorise_url = f"{url}?{querystring}"
         return authorise_url
-        
+
     @classmethod
     def get_scope(cls):
         return settings.MYINFO_SCOPE
