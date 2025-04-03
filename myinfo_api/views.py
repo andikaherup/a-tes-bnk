@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from myinfo.client import MyInfoPersonalClientV4
 from django.conf import settings
+from .utils import extract_myinfo_profile
+from .serializers import MyInfoProfileSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,11 @@ class MyInfoCallbackView(APIView):
             # Store the user data in session or return it directly
             request.session['myinfo_person_data'] = person_data
             
+            # Redirect to the frontend success page if provided
+            success_url = request.query_params.get('success_url')
+            if success_url:
+                return HttpResponseRedirect(success_url)
+            
             # Return the retrieved data
             return Response(person_data, status=status.HTTP_200_OK)
         
@@ -95,7 +102,6 @@ class MyInfoCallbackView(APIView):
                 {"error": "Failed to process MyInfo callback", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 class MyInfoDataView(APIView):
     """
