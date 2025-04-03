@@ -114,6 +114,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
             "redirect_uri": callback_url,
+            "aud": f"{settings.MYINFO_DOMAIN}/{cls.context}/{cls.version}/person"
         }
         querystring = urlencode(query, safe=",/:", quote_via=quote)
         url = cls.get_url("authorize")
@@ -123,7 +124,10 @@ class MyInfoPersonalClientV4(MyInfoClient):
 
     @classmethod
     def get_scope(cls):
-        return settings.MYINFO_SCOPE
+        """
+        Returns the scope string with + instead of spaces
+        """
+        return settings.MYINFO_SCOPE.replace(" ", "+")
 
     def get_access_token(
         self, auth_code: str, state: str, callback_url: str, session_ephemeral_keypair=None
