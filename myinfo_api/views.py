@@ -181,3 +181,33 @@ class MyInfoDataView(APIView):
                 {"error": "Failed to retrieve MyInfo data"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class MyInfoProfileView(APIView):
+    """
+    View to retrieve a simplified profile from MyInfo data.
+    """
+    def get(self, request):
+        try:
+            # Retrieve the user data from session
+            person_data = request.session.get('myinfo_person_data')
+            
+            if not person_data:
+                return Response(
+                    {"error": "No MyInfo data found. Please authorize first."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Extract and format profile data
+            profile = extract_myinfo_profile(person_data)
+            
+            # Serialize the profile
+            serializer = MyInfoProfileSerializer(profile)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.error(f"Error retrieving MyInfo profile: {str(e)}")
+            return Response(
+                {"error": "Failed to retrieve MyInfo profile"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
