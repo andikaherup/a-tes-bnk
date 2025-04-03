@@ -238,3 +238,25 @@ class MyInfoStatusView(APIView):
                 {"error": "Failed to check MyInfo status"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class MyInfoLogoutView(APIView):
+    """
+    View to clear MyInfo data from the session.
+    """
+    def post(self, request):
+        try:
+            # Remove MyInfo data from session
+            request.session.pop('myinfo_person_data', None)
+            
+            return Response({
+                "success": True,
+                "message": "Successfully logged out from MyInfo"
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.error(f"Error logging out from MyInfo: {str(e)}")
+            return Response(
+                {"error": "Failed to logout from MyInfo"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
