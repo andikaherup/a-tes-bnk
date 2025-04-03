@@ -119,7 +119,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
         url = cls.get_url("authorize")
         authorise_url = f"{url}?{querystring}"
         return authorise_url
-
+        
     @classmethod
     def get_scope(cls):
         return settings.MYINFO_SCOPE
