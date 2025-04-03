@@ -211,3 +211,30 @@ class MyInfoProfileView(APIView):
                 {"error": "Failed to retrieve MyInfo profile"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class MyInfoStatusView(APIView):
+    """
+    View to check if the user is authorized with MyInfo.
+    """
+    def get(self, request):
+        try:
+            # Check if MyInfo data exists in session
+            person_data = request.session.get('myinfo_person_data')
+            
+            if person_data and 'uinfin' in person_data and 'value' in person_data['uinfin']:
+                return Response({
+                    "authorized": True,
+                    "user_id": person_data['uinfin']['value']
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                "authorized": False
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.error(f"Error checking MyInfo status: {str(e)}")
+            return Response(
+                {"error": "Failed to check MyInfo status"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
