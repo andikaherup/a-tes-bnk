@@ -103,6 +103,61 @@ class MyInfoCallbackView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
+class MyInfoCallbackView(APIView):
+    """
+    Callback view for MyInfo to redirect back to after user authorization.
+    This view processes the auth code from MyInfo and retrieves user data.
+    """
+    def get(self, request):
+        try:
+            # Get the authorization code from the request
+            auth_code = request.query_params.get('code')
+            
+            if not auth_code:
+                return Response(
+                    {"error": "No authorization code provided"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Retrieve the state from session
+            oauth_state = request.session.get('myinfo_oauth_state')
+            
+            if not oauth_state:
+                return Response(
+                    {"error": "Invalid state parameter"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Retrieve callback URL from session
+            callback_url = request.session.get('myinfo_callback_url')
+            
+            # Exchange the auth code for user data
+            client = MyInfoPersonalClientV4()
+            person_data = client.retrieve_resource(auth_code, oauth_state, callback_url)
+            
+            # Clear session data after use
+            request.session.pop('myinfo_oauth_state', None)
+            request.session.pop('myinfo_callback_url', None)
+            
+            # Store the user data in session or return it directly
+            request.session['myinfo_person_data'] = person_data
+            
+            # Redirect to the frontend success page if provided
+            success_url = request.query_params.get('success_url')
+            if success_url:
+                return HttpResponseRedirect(success_url)
+            
+            # Return the retrieved data
+            return Response(person_data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.error(f"Error processing MyInfo callback: {str(e)}")
+            return Response(
+                {"error": "Failed to process MyInfo callback", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class MyInfoDataView(APIView):
     """
     View to retrieve previously fetched MyInfo data from the session.
