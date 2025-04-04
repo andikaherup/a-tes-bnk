@@ -3,6 +3,8 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from rest_framework import status
 from django.utils.crypto import get_random_string
+from myinfo.client import MyInfoPersonalClientV4
+from django.utils.crypto import get_random_string
 
 class MyInfoViewsTest(TestCase):
     def setUp(self):
@@ -29,7 +31,7 @@ class MyInfoViewsTest(TestCase):
         # Setup session
         session = self.client.session
         session['myinfo_oauth_state'] = 'test_state'
-        session['myinfo_callback_url'] = 'http://testserver/api/v1/myinfo/callback/'
+        session['myinfo_callback_url'] = 'http://testserver/api/v1/myinfo/callback'
         session.save()
         
         # Setup mock
@@ -87,3 +89,21 @@ class MyInfoViewsTest(TestCase):
         # Assert response
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), mock_person_data)
+
+    def test_flow():
+        # Generate state
+        oauth_state = get_random_string(length=16)
+        print(f"State: {oauth_state}")
+    
+        # Get callback URL 
+        callback_url = "http://localhost:3001/callback"
+    
+        # Get authorization URL
+        client = MyInfoPersonalClientV4()
+        auth_url = client.get_authorise_url(oauth_state, callback_url)
+        print(f"Authorization URL: {auth_url}")
+    
+        # This should match the URL pattern from the working demo app
+        print("Does it look like the demo app URL? (It should go to mockpass-sp)")
+
+    print(test_flow())  
