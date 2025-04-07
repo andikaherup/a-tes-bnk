@@ -56,6 +56,14 @@ pip install -r requirements.txt
 ```bash
 python -m pytest  # Run tests
 python manage.py runserver localhost:3001  # Start development server on port 3001 since myinfo only recognize port 3001 for localhost
+
+```
+
+## Access the API for myinfo
+
+```bash
+http://localhost:3001/api/v1/myinfo/authorize
+
 ```
 
 ## MyInfo API Usage Example
