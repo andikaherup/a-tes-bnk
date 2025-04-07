@@ -59,10 +59,13 @@ class MyInfoClient(object):
             "Content-Type": "application/x-www-form-urlencoded",
             "Accept": "application/json",
         }
+
+
         if extra_headers:
             headers.update(extra_headers)
 
-
+        log.debug(f"Final request headers: {headers}")
+        log.debug(f"Final request data: {data}")
         response = self.session.request(
             method,
             url=api_url,
@@ -76,7 +79,7 @@ class MyInfoClient(object):
         try:
             response.raise_for_status()
         except HTTPError as e:
-            log.exception("HTTPError: %s", e.response.content)
+            print(f"Full error response: {e.response.content if hasattr(e, 'response') else str(e)}")
             raise
 
         try:
@@ -99,7 +102,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
 
 
     @classmethod
-    def get_authorise_url(cls, oauth_state: str, callback_url: str) -> str:
+    def get_authorise_url(cls, code_challenge: str, callback_url: str) -> str:
         """
         Return a redirect URL to SingPass login page for user's authentication and consent.
         """
@@ -110,11 +113,12 @@ class MyInfoPersonalClientV4(MyInfoClient):
             "scope": cls.get_scope(),
             "purpose_id": cls.purpose_id,
             "response_type": "code",
-            "code_challenge": generate_code_challenge(oauth_state),
+            "code_challenge": code_challenge,
             "code_challenge_method": "S256",
             "redirect_uri": callback_url,
         }
-        log.debug("query = %s", query)
+
+
 
         querystring = urlencode(query, safe=",/:", quote_via=quote)
         url = cls.get_url("authorize")
@@ -128,25 +132,13 @@ class MyInfoPersonalClientV4(MyInfoClient):
         """
         return settings.MYINFO_SCOPE
 
-    def get_access_token(
-        self, 
-        auth_code: str, 
-        state: str, 
-        callback_url: str, 
-        session_ephemeral_keypair=None
-    ):
-        """
-        Generate an access token with comprehensive logging and error handling
-        """
-
-        
+    def get_access_token(self, auth_code, code_verifier, callback_url, session_ephemeral_keypair=None):
+        """Generate an access token with comprehensive logging and error handling"""
         try:
             api_url = self.get_url("token")
-
             
             # Validate code verifier
-            if not is_valid_code_verifier(state):
-
+            if not is_valid_code_verifier(code_verifier):
                 raise ValueError("Invalid code verifier format")
             
             # Generate ephemeral keypair if not provided
@@ -157,39 +149,31 @@ class MyInfoPersonalClientV4(MyInfoClient):
             jkt_thumbprint = session_ephemeral_keypair.thumbprint()
             client_assertion = generate_client_assertion(api_url, jkt_thumbprint)
             
-            # Prepare token request data
+            # Prepare token request data - use the exact same order as Node.js
             data = {
-                "code": auth_code,
                 "grant_type": "authorization_code",
-                "client_id": self.client_id,
-                "client_assertion": client_assertion,
-                "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                "code": auth_code,
                 "redirect_uri": callback_url,
-                "code_verifier": state
+                "client_id": self.client_id,
+                "code_verifier": code_verifier,
+                "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                "client_assertion": client_assertion
             }
             
-            # Log sensitive data carefully
-            log_safe_data = data.copy()
-            log_safe_data['client_assertion'] = '[MASKED]'
-            log_safe_data['code_verifier'] = '[MASKED]'
-
-            
-            # Ensure data is properly URL-encoded
-            data_encoded = urlencode(data, safe=',')
+            # Encode data - use standard urlencode without custom handling
+            data_encoded = urlencode(data)
             
             # Generate DPoP header
             dpop_header = generate_dpop_header(api_url, session_ephemeral_keypair)
 
-            # Prepare headers
+            # Prepare headers - exact format matters
             headers = {
-                "DPoP": dpop_header,
+                "Content-Type": "application/x-www-form-urlencoded",
                 "Cache-Control": "no-cache",
-                "Content-Type": "application/x-www-form-urlencoded; charset=ISO-8859-1",
-                "Accept": "application/json"
+                "DPoP": dpop_header
             }
-
-            # Log headers (be careful with sensitive information)
-
+            
+            log.debug(f"Token request headers: {headers.keys()}")
 
             # Make the token request
             try:
@@ -199,24 +183,102 @@ class MyInfoPersonalClientV4(MyInfoClient):
                     extra_headers=headers,
                     data=data_encoded,
                 )
+                return resp
+            except Exception as request_error:
+                log.error(f"Token request failed: {str(request_error)}")
+                raise
+        except Exception as e:
+            log.error(f"Error in get_access_token: {str(e)}")
+            raise
+
+    # def get_access_token(
+    #     self, 
+    #     auth_code: str, 
+    #     state: str, 
+    #     callback_url: str, 
+    #     session_ephemeral_keypair=None
+    # ):
+    #     """
+    #     Generate an access token with comprehensive logging and error handling
+    #     """
+      
+        
+    #     try:
+    #         api_url = self.get_url("token")
+
+            
+    #         # Validate code verifier
+    #         # if not is_valid_code_verifier(state):
+    #         #     raise ValueError("Invalid code verifier format")
+            
+    #         # Generate ephemeral keypair if not provided
+    #         if session_ephemeral_keypair is None:
+    #             session_ephemeral_keypair = generate_ephemeral_session_keypair()
+            
+    #         # Generate client assertion
+    #         jkt_thumbprint = session_ephemeral_keypair.thumbprint()
+    #         client_assertion = generate_client_assertion(api_url, jkt_thumbprint)
+            
+    #         # Prepare token request data
+    #         data = {
+    #             "code": auth_code,
+    #             "grant_type": "authorization_code",
+    #             "client_id": self.client_id,
+    #             "client_assertion": client_assertion,
+    #             "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+    #             "redirect_uri": callback_url,
+    #             "code_verifier": state
+    #         }  
+    #         log.debug(f"request data: {data}")
+            
+    #         # Log sensitive data carefully
+    #         log_safe_data = data.copy()
+    #         log_safe_data['client_assertion'] = '[MASKED]'
+    #         log_safe_data['code_verifier'] = '[MASKED]'
+
+            
+    #         # Ensure data is properly URL-encoded
+    #         data_encoded = urlencode(data, safe=',')
+            
+    #         # Generate DPoP header
+    #         dpop_header = generate_dpop_header(api_url, session_ephemeral_keypair)
+
+    #         # Prepare headers
+    #         headers = {
+    #             "DPoP": dpop_header,
+    #             "Cache-Control": "no-cache",
+    #             "Content-Type": "application/x-www-form-urlencoded; charset=ISO-8859-1",
+    #             "Accept": "application/json"
+    #         }
+
+
+
+    #         # Make the token request
+    #         try:
+    #             resp = self.request(
+    #                 api_url,
+    #                 method="POST",
+    #                 extra_headers=headers,
+    #                 data=data_encoded,
+    #             )
                 
 
-                return resp
+    #             return resp
             
-            except Exception as request_error:
+    #         except Exception as request_error:
 
-                raise
+    #             raise
         
-        except Exception as e:
+    #     except Exception as e:
 
-            raise
+    #         raise
 
 
  
     def get_person_data(self, access_token: str, session_ephemeral_keypair):
         try:
             # Log the start of person data retrieval
-            log.info("Starting person data retrieval")
+
         
             # Log JWKS URL being used
             log.debug(f"JWKS Token Verification URL: {settings.MYINFO_JWKS_TOKEN_VERIFICATION_URL}")
@@ -233,7 +295,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
             try:
                 decoded_access_token = verify_jws(access_token, jwkset)
                 log.debug("Successfully verified access token")
-                log.debug(f"Decoded token subject: {decoded_access_token.get('sub')}")
+
             except Exception as token_verify_error:
                 log.error(f"Error verifying access token: {str(token_verify_error)}")
                 raise
@@ -241,7 +303,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
             # Construct resource URL
             try:
                 api_url = self.get_retrieve_resource_url(decoded_access_token["sub"])
-                log.debug(f"Person data URL: {api_url}")
+
             except KeyError as key_error:
                 log.error(f"Missing 'sub' in decoded token: {decoded_access_token}")
                 raise
@@ -250,7 +312,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
             params = {
                 "scope": self.get_scope(),
             }
-            log.debug(f"Request params: {params}")
+
         
             # Generate access token hash for DPoP
             try:
@@ -277,7 +339,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
                 "dpop": dpop_header,
                 "Cache-Control": "no-cache",
             }
-            log.debug(f"Request headers: {headers}")
+
         
             # Make the request
             try:
@@ -324,11 +386,11 @@ class MyInfoPersonalClientV4(MyInfoClient):
     #     )
     #     return resp
 
-    def retrieve_resource(self, auth_code: str, state: str, callback_url: str) -> dict:
+    def retrieve_resource(self, auth_code: str, code_verifier: str, callback_url: str) -> dict:
         session_ephemeral_keypair = generate_ephemeral_session_keypair()
         access_token_resp = self.get_access_token(
             auth_code=auth_code,
-            state=state,
+            code_verifier=code_verifier,
             callback_url=callback_url,
             session_ephemeral_keypair=session_ephemeral_keypair,
         )

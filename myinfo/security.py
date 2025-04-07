@@ -1,14 +1,15 @@
 import base64
 import json
 import time
-from hashlib import sha256
+import hashlib
 import secrets
-import re
 import requests
 import logging
 from myinfo import settings as myinfo_settings
 # from django.core.cache import cache
 from django.utils.crypto import get_random_string
+import os
+import re
 from jwcrypto import jwe, jwk, jws
 from jwcrypto.jwk import JWK, JWKSet
 
@@ -16,70 +17,82 @@ log = logging.getLogger(__name__)
 
 
 # ========== Myinfo v4 (JWKS) ===========
-def generate_code_challenge(code_verifier: str):
-    """
-    Generates a code challenge
 
-    >>> generate_code_challenge("T3BDc2tiTWJwcDdkZWR2Vk5hMHJabE8zMlZNRk96UE4")
-    'DiyYoXqrytFRUhreVd9OgE0u3X8B23aS7xKb7O_v_sY'
-    """
-    # Ensure code verifier is encoded to bytes
-    verifier_bytes = code_verifier.encode('ascii')
-    
-    # Generate SHA256 hash
-    sha256_digest = sha256(verifier_bytes).digest()
-    
-    # Base64 URL encode the digest
-    challenge = base64.urlsafe_b64encode(sha256_digest).decode('ascii')
-    
-    # Remove padding
-    challenge = challenge.rstrip('=')
-    
-    return challenge
 
+# def base64url_encode(data):
+#     """
+#     Base64URL encode binary data (identical to the Node.js implementation)
+#     """
+#     # Standard base64 encoding
+#     encoded = base64.b64encode(data)
+#     # Convert to string and replace characters for base64url
+#     return encoded.decode('ascii').replace('+', '-').replace('/', '_').replace('=', '')
+
+# def generate_code_verifier():
+#     """
+#     Generate a code verifier according to the MyInfo specification
+#     This matches: base64URLEncode(crypto.randomBytes(32))
+#     """
+#     # Generate 32 random bytes
+#     random_bytes = os.urandom(32)
+#     # Base64URL encode the random bytes
+#     verifier = base64url_encode(random_bytes)
+#     return verifier
+
+# def generate_code_challenge(code_verifier):
+#     """
+#     Generate a code challenge according to the MyInfo specification
+#     This matches: base64URLEncode(crypto.createHash('sha256').update(codeVerifier).digest())
+#     """
+#     # Hash the verifier string (as UTF-8 bytes)
+#     digest = sha256(code_verifier.encode('utf-8')).digest()
+#     # Base64URL encode the hash
+#     challenge = base64url_encode(digest)
+#     return challenge
 
 def is_valid_code_verifier(verifier):
-        """
-        Validate code verifier according to PKCE specifications
-        
-        :param verifier: Code verifier to validate
-        :return: Boolean indicating if verifier is valid
-        """
-        # Check length (between 43 and 128 characters)
-        if not (43 <= len(verifier) <= 128):
-
-            return False
-        
-        # Check that verifier only contains valid characters
-        # Allowed: A-Z, a-z, 0-9, "-", ".", "_", "~"
-        if not re.match(r'^[A-Za-z0-9\-._~]+$', verifier):
-
-            return False
-        
-        return True
-
-
-def generate_code_verifier(length=64):
     """
-    Generate a secure, standards-compliant code verifier for PKCE.
-    
-    SingPass requires:
-    - Between 43 and 128 characters
-    - Consists of unreserved URI characters (A-Z, a-z, 0-9, "-", ".", "_", "~")
+    Validate code verifier according to PKCE specifications
     """
-    # Use secrets.token_urlsafe to generate a URL-safe string
-    verifier = secrets.token_urlsafe(length)
+    # Check length (between 43 and 128 characters)
+    if not (43 <= len(verifier) <= 128):
+        print(f"Invalid verifier length: {len(verifier)}")
+        return False
     
-    # Ensure the verifier meets PKCE requirements
-    # Remove any characters that aren't A-Z, a-z, 0-9, "-", ".", "_", "~"
-    verifier = re.sub(r'[^A-Za-z0-9\-._~]', '', verifier)
+    # Check that verifier only contains valid characters
+    # Allowed: A-Z, a-z, 0-9, "-", "_" (base64url alphabet)
+    if not re.match(r'^[A-Za-z0-9\-_]+$', verifier):
+        print(f"Invalid verifier characters found in: {verifier}")
+        return False
     
-    # Trim or pad to ensure length between 43 and 128 characters
-    verifier = verifier[:128] if len(verifier) > 128 else verifier
-    verifier = verifier.ljust(43, 'A') if len(verifier) < 43 else verifier
+    return True
+
+def base64url_encode(data):
+    """Identical to the Node.js implementation"""
+    if isinstance(data, str):
+        data = data.encode('utf-8')
     
+    encoded = base64.b64encode(data)
+    return encoded.decode('utf-8').replace('+', '-').replace('/', '_').replace('=', '')
+
+def generate_code_verifier():
+    """Generate a code verifier identical to Node.js crypto.randomBytes(32)"""
+    random_bytes = os.urandom(32)
+    # Convert to hex string exactly like Node.js
+    verifier = random_bytes.hex()
     return verifier
 
+def generate_code_challenge(code_verifier):
+    """
+    Generate a code challenge according to the MyInfo specification
+    This matches: base64URLEncode(crypto.createHash('sha256').update(codeVerifier).digest())
+    """
+    # Hash the verifier string (as UTF-8 bytes)
+    digest = hashlib.sha256(code_verifier.encode('utf-8')).digest()
+    # Base64URL encode the hash
+    challenge = base64.urlsafe_b64encode(digest).decode('utf-8').replace('=', '')
+    return challenge
+        
 def generate_ephemeral_session_keypair() -> JWK:
     sig_jwk = jwk.JWK.generate(kty="EC", crv="P-256", alg="ES256", use="sig")
     return sig_jwk

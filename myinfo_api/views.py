@@ -22,11 +22,15 @@ class MyInfoAuthorizeView(APIView):
             # Generate a code verifier for PKCE
             code_verifier = generate_code_verifier()
             code_challenge = generate_code_challenge(code_verifier)
-            
-            # Store the state and code verifier in the session for later verification
-            # request.session['myinfo_oauth_state'] = oauth_state
+
+
+           
             request.session['myinfo_code_verifier'] = code_verifier
+            print(f"Generated code verifier: {code_verifier}")
+            print(f"Stored in session: {request.session.get('myinfo_code_verifier')}")
+
             
+
             # Get the callback URL from the settings or request query parameters
             callback_url = request.query_params.get(
                 'callback_url', 
@@ -68,7 +72,16 @@ class MyInfoCallbackView(APIView):
             # Retrieve the state and code verifier from session
             # oauth_state = request.session.get('myinfo_oauth_state')
             code_verifier = request.session.get('myinfo_code_verifier')
-            
+
+            print(f"Callback received code: {auth_code}")
+
+    
+            # Before making the token request
+            print(f"Session ID: {request.session.session_key}")
+            print(f"All session keys: {request.session.keys()}")
+    
+            # When using the verifier in your client
+
             if not code_verifier:
                 logger.error("Invalid or missing code verifier")
                 return Response(
@@ -83,7 +96,7 @@ class MyInfoCallbackView(APIView):
             client = MyInfoPersonalClientV4()
             person_data = client.retrieve_resource(
                 auth_code=auth_code, 
-                state=code_verifier, 
+                code_verifier=code_verifier, 
                 callback_url=callback_url
             )
             
@@ -97,14 +110,19 @@ class MyInfoCallbackView(APIView):
             
             # Redirect to a frontend route or return the data
             frontend_redirect_url = f"/api/v1/myinfo/profile?status=success"
+
             return HttpResponseRedirect(frontend_redirect_url)
             
         except Exception as e:
             logger.error(f"Error processing MyInfo callback: {str(e)}")
             
             # Redirect to error page or return error response
-            frontend_error_url = f"/api/v1/myinfo/profile?status=error&message={str(e)}"
-            return HttpResponseRedirect(frontend_error_url)
+            # frontend_error_url = f"/api/v1/myinfo/profile?status=error&message={str(e)}"
+            return Response({
+            'error': str(e)
+
+        })
+
 
 class GenerateCodeChallengeView(APIView):
     def post(self, request):
