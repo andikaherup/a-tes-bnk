@@ -16,7 +16,7 @@ def custom_exception_handler(exc, context):
     
     # If the response is None, this is an unhandled exception
     if response is None:
-        logger.error(f"Unhandled exception: {str(exc)}")
+
         return Response(
             {
                 'error': 'An unexpected error occurred',

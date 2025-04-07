@@ -64,8 +64,6 @@ class MyInfoClient(object):
         if extra_headers:
             headers.update(extra_headers)
 
-        log.debug(f"Final request headers: {headers}")
-        log.debug(f"Final request data: {data}")
         response = self.session.request(
             method,
             url=api_url,
@@ -102,10 +100,11 @@ class MyInfoPersonalClientV4(MyInfoClient):
 
 
     @classmethod
-    def get_authorise_url(cls, code_challenge: str, callback_url: str) -> str:
+    def get_authorise_url(cls, code_verifier: str, callback_url: str) -> str:
         """
         Return a redirect URL to SingPass login page for user's authentication and consent.
         """
+        code_challenge = generate_code_challenge(code_verifier)
 
     
         query = {
@@ -173,7 +172,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
                 "DPoP": dpop_header
             }
             
-            log.debug(f"Token request headers: {headers.keys()}")
+
 
             # Make the token request
             try:
@@ -191,89 +190,6 @@ class MyInfoPersonalClientV4(MyInfoClient):
             log.error(f"Error in get_access_token: {str(e)}")
             raise
 
-    # def get_access_token(
-    #     self, 
-    #     auth_code: str, 
-    #     state: str, 
-    #     callback_url: str, 
-    #     session_ephemeral_keypair=None
-    # ):
-    #     """
-    #     Generate an access token with comprehensive logging and error handling
-    #     """
-      
-        
-    #     try:
-    #         api_url = self.get_url("token")
-
-            
-    #         # Validate code verifier
-    #         # if not is_valid_code_verifier(state):
-    #         #     raise ValueError("Invalid code verifier format")
-            
-    #         # Generate ephemeral keypair if not provided
-    #         if session_ephemeral_keypair is None:
-    #             session_ephemeral_keypair = generate_ephemeral_session_keypair()
-            
-    #         # Generate client assertion
-    #         jkt_thumbprint = session_ephemeral_keypair.thumbprint()
-    #         client_assertion = generate_client_assertion(api_url, jkt_thumbprint)
-            
-    #         # Prepare token request data
-    #         data = {
-    #             "code": auth_code,
-    #             "grant_type": "authorization_code",
-    #             "client_id": self.client_id,
-    #             "client_assertion": client_assertion,
-    #             "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-    #             "redirect_uri": callback_url,
-    #             "code_verifier": state
-    #         }  
-    #         log.debug(f"request data: {data}")
-            
-    #         # Log sensitive data carefully
-    #         log_safe_data = data.copy()
-    #         log_safe_data['client_assertion'] = '[MASKED]'
-    #         log_safe_data['code_verifier'] = '[MASKED]'
-
-            
-    #         # Ensure data is properly URL-encoded
-    #         data_encoded = urlencode(data, safe=',')
-            
-    #         # Generate DPoP header
-    #         dpop_header = generate_dpop_header(api_url, session_ephemeral_keypair)
-
-    #         # Prepare headers
-    #         headers = {
-    #             "DPoP": dpop_header,
-    #             "Cache-Control": "no-cache",
-    #             "Content-Type": "application/x-www-form-urlencoded; charset=ISO-8859-1",
-    #             "Accept": "application/json"
-    #         }
-
-
-
-    #         # Make the token request
-    #         try:
-    #             resp = self.request(
-    #                 api_url,
-    #                 method="POST",
-    #                 extra_headers=headers,
-    #                 data=data_encoded,
-    #             )
-                
-
-    #             return resp
-            
-    #         except Exception as request_error:
-
-    #             raise
-        
-    #     except Exception as e:
-
-    #         raise
-
-
  
     def get_person_data(self, access_token: str, session_ephemeral_keypair):
         try:
@@ -281,12 +197,12 @@ class MyInfoPersonalClientV4(MyInfoClient):
 
         
             # Log JWKS URL being used
-            log.debug(f"JWKS Token Verification URL: {settings.MYINFO_JWKS_TOKEN_VERIFICATION_URL}")
+
         
             # Retrieve JWKS
             try:
                 jwkset = get_jwkset(settings.MYINFO_JWKS_TOKEN_VERIFICATION_URL)
-                log.debug("Successfully retrieved JWKS")
+
             except Exception as jwks_error:
                 log.error(f"Error retrieving JWKS: {str(jwks_error)}")
                 raise
@@ -294,7 +210,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
             # Verify access token
             try:
                 decoded_access_token = verify_jws(access_token, jwkset)
-                log.debug("Successfully verified access token")
+
 
             except Exception as token_verify_error:
                 log.error(f"Error verifying access token: {str(token_verify_error)}")
@@ -318,7 +234,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
             try:
                 access_token_hash = sha256(access_token.encode()).digest()
                 ath = base64.urlsafe_b64encode(access_token_hash).decode().replace("=", "")
-                log.debug("Generated access token hash (ath)")
+
             except Exception as hash_error:
                 log.error(f"Error generating access token hash: {str(hash_error)}")
                 raise
@@ -328,7 +244,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
                 dpop_header = generate_dpop_header(
                     api_url, session_ephemeral_keypair, method="GET", ath=ath
                 )
-                log.debug("Generated DPoP header")
+
             except Exception as dpop_error:
                 log.error(f"Error generating DPoP header: {str(dpop_error)}")
                 raise
@@ -349,7 +265,7 @@ class MyInfoPersonalClientV4(MyInfoClient):
                     extra_headers=headers,
                     params=params,
                 )
-                log.info("Successfully retrieved person data")
+
                 return resp
             except Exception as request_error:
                 log.error(f"Error making person data request: {str(request_error)}")
@@ -358,33 +274,6 @@ class MyInfoPersonalClientV4(MyInfoClient):
         except Exception as e:
             log.error(f"Unexpected error in get_person_data: {str(e)}")
             raise    
-    # def get_person_data(self, access_token: str, session_ephemeral_keypair):
-    #     jwkset = get_jwkset(settings.MYINFO_JWKS_TOKEN_VERIFICATION_URL)
-    #     decoded_access_token = verify_jws(access_token, jwkset)
-    #     api_url = self.get_retrieve_resource_url(decoded_access_token["sub"])
-    #     params = {
-    #         "scope": self.get_scope(),
-    #     }
-
-    #     # generate ath to append into DPoP
-    #     access_token_hash = sha256(access_token.encode()).digest()
-    #     ath = base64.urlsafe_b64encode(access_token_hash).decode().replace("=", "")
-
-    #     dpop_header = generate_dpop_header(
-    #         api_url, session_ephemeral_keypair, method="GET", ath=ath
-    #     )
-
-    #     resp = self.request(
-    #         api_url,
-    #         method="GET",
-    #         extra_headers={
-    #             "Authorization": f"DPoP {access_token}",
-    #             "dpop": dpop_header,
-    #             "Cache-Control": "no-cache",
-    #         },
-    #         params=params,
-    #     )
-    #     return resp
 
     def retrieve_resource(self, auth_code: str, code_verifier: str, callback_url: str) -> dict:
         session_ephemeral_keypair = generate_ephemeral_session_keypair()

@@ -22,7 +22,6 @@ class MyInfoAuthorizeView(APIView):
             
             # Generate a code verifier for PKCE
             code_verifier = generate_code_verifier()
-            code_challenge = generate_code_challenge(code_verifier)
 
             request.session['myinfo_code_verifier'] = code_verifier
             print(f"Generated code verifier: {code_verifier}")
@@ -39,13 +38,13 @@ class MyInfoAuthorizeView(APIView):
             
             # Get the authorization URL
             client = MyInfoPersonalClientV4()
-            auth_url = client.get_authorise_url(code_challenge, callback_url)
+            auth_url = client.get_authorise_url(code_verifier, callback_url)
             
             # Redirect user to MyInfo authorization page
             return HttpResponseRedirect(auth_url)
         
         except Exception as e:
-            logger.error(f"Error initiating MyInfo authorization: {str(e)}")
+
             return Response(
                 {"error": "Failed to initiate MyInfo authorization"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -73,7 +72,7 @@ class MyInfoCallbackView(APIView):
             # When using the verifier in your client
 
             if not code_verifier:
-                logger.error("Invalid or missing code verifier")
+
                 return Response(
                     {"error": "Invalid authentication session"},
                     status=status.HTTP_400_BAD_REQUEST

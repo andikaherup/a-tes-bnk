@@ -15,41 +15,6 @@ from jwcrypto.jwk import JWK, JWKSet
 
 log = logging.getLogger(__name__)
 
-
-# ========== Myinfo v4 (JWKS) ===========
-
-
-# def base64url_encode(data):
-#     """
-#     Base64URL encode binary data (identical to the Node.js implementation)
-#     """
-#     # Standard base64 encoding
-#     encoded = base64.b64encode(data)
-#     # Convert to string and replace characters for base64url
-#     return encoded.decode('ascii').replace('+', '-').replace('/', '_').replace('=', '')
-
-# def generate_code_verifier():
-#     """
-#     Generate a code verifier according to the MyInfo specification
-#     This matches: base64URLEncode(crypto.randomBytes(32))
-#     """
-#     # Generate 32 random bytes
-#     random_bytes = os.urandom(32)
-#     # Base64URL encode the random bytes
-#     verifier = base64url_encode(random_bytes)
-#     return verifier
-
-# def generate_code_challenge(code_verifier):
-#     """
-#     Generate a code challenge according to the MyInfo specification
-#     This matches: base64URLEncode(crypto.createHash('sha256').update(codeVerifier).digest())
-#     """
-#     # Hash the verifier string (as UTF-8 bytes)
-#     digest = sha256(code_verifier.encode('utf-8')).digest()
-#     # Base64URL encode the hash
-#     challenge = base64url_encode(digest)
-#     return challenge
-
 def is_valid_code_verifier(verifier):
     """
     Validate code verifier according to PKCE specifications
