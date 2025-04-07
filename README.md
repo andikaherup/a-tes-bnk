@@ -41,6 +41,8 @@ pip install -r requirements.txt
 
 ## Configuration
 
+At the current repo i don't use any env , so just ignore the env.example( this is for further development ). All the configuration is already in myinfo/settings.py
+
 1. Set up environment variables:
 
    - `MYINFO_CLIENT_ID`: Your MyInfo Client ID
