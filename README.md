@@ -1,80 +1,122 @@
-Django 2024
-===========
+# Django MyInfo Integration
 
 ## Overview
 
-Use the existing code provided (or roll your own as you see fit), build a web application powered by Django REST Framework APIs
-to demonstrate the integration with [MyInfo v4 APIs](https://api.singpass.gov.sg/library/myinfo/developers/overview). 
-Kindly refer to the [MyInfo Demo App](https://github.com/singpass/myinfo-demo-app-v4) from [Tutorial 2: End-to-End Integration with Myinfo v4 APIs](https://api.singpass.gov.sg/library/myinfo/developers/tutorial2) provided by Singapore Government Technology Agency (GovTech)
+This Django web application demonstrates integration with the MyInfo v4 APIs provided by the Singapore Government Technology Agency (GovTech). The project showcases how to implement backend APIs and Django views for retrieving personal information using the MyInfo authentication flow.
 
-You only need to build backend APIs and Django views.
-No need to implement the frontend at all.
+## Features
 
-## Evaluation Criteria
+- MyInfo v4 API Integration
+- OAuth 2.1 Authorization Flow
+- Proof Key for Code Exchange (PKCE) Support
+- Secure Token and Person Data Retrieval
 
-We will look at your project and assess it for:
+## Prerequisites
 
-1. Extensibility - separation of concerns.
-2. Simplicity - aim for the simplest solution that gets the job done whilst remaining
-readable, extensible and testable.
-3. Test Coverage - breaking changes should break your tests.
-4. Robustness - should handle and report errors.
+- Python 3.8+
+- pip
+- virtualenv (recommended)
 
-If you have any questions about these criteria, please ask.
+## Installation
 
-## Specifications
+1. Clone the repository:
 
-1. Include a README with (accurate) usage instructions.
+```bash
+git clone <your-repository-url>
+cd myinfo-django-project
+```
 
+2. Create and activate a virtual environment:
 
-## Submission
-
-GitHub is the preferred option (a public repo is fine), but we will also accept a .zip file if
-necessary. Email your solution to gordon@abnk.ai.
-
-
-## MyInfo Python API Usage
-
-Set up virtualenv
-
-```shell
+```bash
 python3 -m venv env
-source env/bin/activate
+source env/bin/activate  # On Windows, use `env\Scripts\activate`
+```
+
+3. Install dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
-In Python shell
+## Configuration
+
+1. Set up environment variables:
+
+   - `MYINFO_CLIENT_ID`: Your MyInfo Client ID
+   - `MYINFO_PRIVATE_KEY_SIG`: Private signing key for client assertion
+   - `MYINFO_PRIVATE_KEY_ENC`: Private encryption key
+
+2. Update `myinfo/settings.py` with your specific configurations:
+   - Adjust `MYINFO_SCOPE` as needed
+   - Modify API endpoint URLs if required
+
+## Running the Application
+
+```bash
+python -m pytest  # Run tests
+python manage.py runserver localhost:3001  # Start development server on port 3001 since myinfo only recognize port 3001 for localhost
+```
+
+## MyInfo API Usage Example
 
 ```python
 from myinfo.client import MyInfoPersonalClientV4
 from django.utils.crypto import get_random_string
 
+# Generate OAuth state and callback URL
 oauth_state = get_random_string(length=16)
 callback_url = "http://localhost:3001/callback"
 
+# Create MyInfo client
 client = MyInfoPersonalClientV4()
 
-client.get_authorise_url(oauth_state, callback_url)
+# Get authorization URL
+authorize_url = client.get_authorise_url(oauth_state, callback_url)
 
-# Open up this SingPass Authorise URL and follow instructions
-# After clicking on the "I Agree" button, you'll be redirected back to a callback URL like this
-# http://localhost:3001/callback?code=myinfo-com-NlZPurlLUH79euT2I0xT6dFnY0lbf5oNVAhNVo8U
-
-
-# Getting access token and getting person data
-# Note: paste the auth code from the above callback
-auth_code = "myinfo-com-NlZPurlLUH79euT2I0xT6dFnY0lbf5oNVAhNVo8U"
-person_data = MyInfoPersonalClientV4().retrieve_resource(auth_code, oauth_state, callback_url)
-print(person_data)
+# After user authentication, retrieve person data
+auth_code = "your-auth-code-from-callback"
+person_data = client.retrieve_resource(auth_code, oauth_state, callback_url)
 ```
 
-To run unit tests
+## Evaluation Criteria
 
-```shell
-python -m pytest
-```
+The project will be assessed on:
+
+1. Extensibility and separation of concerns
+2. Simplicity and readability
+3. Test coverage
+4. Error handling and robustness
+
+## Security Considerations
+
+- Implements OAuth 2.1 with PKCE
+- Uses client assertions for authentication
+- Supports encryption and signing of payloads
 
 ## Reference
 
-You may refer to the following screen recording of a Sample React Native app powered by Django REST Framework APIs
-https://drive.google.com/file/d/1Lj6hFGjuC2R3AXSTDvVWBAnW4bNRLl1j/view?usp=sharing for reference.
+- [MyInfo v4 API Documentation](https://api.singpass.gov.sg/library/myinfo/developers/overview)
+- [MyInfo Demo App](https://github.com/singpass/myinfo-demo-app-v4)
+
+## Troubleshooting
+
+- Ensure all environment variables are correctly set
+- Verify client credentials and keys
+- Check network connectivity to MyInfo APIs
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+Distributed under the ISC License.
+
+## Contact
+
+Project Maintainer - [andika / andikaherup@gmail.com]
