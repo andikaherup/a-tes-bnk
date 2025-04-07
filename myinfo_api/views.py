@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from myinfo.client import MyInfoPersonalClientV4
+from myinfo_api.utils import extract_myinfo_profile
 from myinfo.security import generate_code_challenge,generate_code_verifier
 
 logger = logging.getLogger(__name__)
@@ -23,13 +24,9 @@ class MyInfoAuthorizeView(APIView):
             code_verifier = generate_code_verifier()
             code_challenge = generate_code_challenge(code_verifier)
 
-
-           
             request.session['myinfo_code_verifier'] = code_verifier
             print(f"Generated code verifier: {code_verifier}")
             print(f"Stored in session: {request.session.get('myinfo_code_verifier')}")
-
-            
 
             # Get the callback URL from the settings or request query parameters
             callback_url = request.query_params.get(
@@ -72,13 +69,6 @@ class MyInfoCallbackView(APIView):
             # Retrieve the state and code verifier from session
             # oauth_state = request.session.get('myinfo_oauth_state')
             code_verifier = request.session.get('myinfo_code_verifier')
-
-            print(f"Callback received code: {auth_code}")
-
-    
-            # Before making the token request
-            print(f"Session ID: {request.session.session_key}")
-            print(f"All session keys: {request.session.keys()}")
     
             # When using the verifier in your client
 
@@ -99,14 +89,14 @@ class MyInfoCallbackView(APIView):
                 code_verifier=code_verifier, 
                 callback_url=callback_url
             )
-            
+            print(f"Person Data: {person_data}")
             # Store the user data in session
             request.session['myinfo_person_data'] = person_data
             
             # Clear the temporary session variables
             # request.session.pop('myinfo_oauth_state', None)
             request.session.pop('myinfo_code_verifier', None)
-            request.session.pop('myinfo_code_verifier', None)
+
             
             # Redirect to a frontend route or return the data
             frontend_redirect_url = f"/api/v1/myinfo/profile?status=success"
@@ -191,11 +181,11 @@ class MyInfoProfileView(APIView):
             profile = extract_myinfo_profile(person_data)
             
             # Serialize the profile
-            serializer = MyInfoProfileSerializer(profile)
+
             
             return Response({
                 "status": "success",
-                "profile": serializer.data
+                "profile": profile
             }, status=status.HTTP_200_OK)
         
         except Exception as e:
@@ -204,6 +194,8 @@ class MyInfoProfileView(APIView):
                 {"status": "error", "message": "Failed to retrieve MyInfo profile"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    
 
 class MyInfoStatusView(APIView):
     """
